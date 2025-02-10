@@ -1,0 +1,57 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const pages_1 = require("./pages");
+const fs = require("fs-extra");
+// import puppeteer library
+const puppeteer = require("puppeteer-extra");
+const StealthPlugin = require("puppeteer-extra-plugin-stealth");
+puppeteer.use(StealthPlugin());
+const config_1 = require("./environment/config");
+const identifiers_1 = require("./pages/identifiers");
+(async () => {
+    console.log(`>> Starting ${config_1.config.name} ......`);
+    const userDataDir = `/tmp/chrome-user-data-${Math.floor(Math.random() * 100000)}`;
+    const args = [
+        "--disable-infobars",
+        "--user-agent=" + config_1.config.user_agent,
+        "--user-data-dir=" + userDataDir,
+        "--ignore-certificate-errors",
+        "--ignore-certifcate-errors-spki-list",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-renderer-backgrounding",
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
+        "--disable-gpu",
+        "--disable-search-geolocation-disclosure",
+        "--disable-plugins",
+        "--disable-notifications",
+    ];
+    // Start browser
+    const browser = await puppeteer.launch({
+        headless: config_1.config.headless,
+        devtools: config_1.config.devtools,
+        args: args,
+    });
+    // Fill up queue
+    let queue = await (0, identifiers_1.scrapeIdentifier)();
+    console.log(`>> Queue Size: ${queue.length}`);
+    // Start to scrape websites
+    if (queue.length === 0) {
+        console.log(">> Scraper exiting...");
+    }
+    else {
+        await (0, pages_1.scrapePublicPage)(browser, queue);
+    }
+    // Delete user data dir
+    try {
+        await fs.rmSync(userDataDir, { recursive: true, force: true });
+    }
+    catch (error) {
+        if (error instanceof Error) {
+            console.error(" > Error clearing user data dir ", error.message);
+        }
+    }
+})();
